@@ -1,4 +1,3 @@
-# TODO: Count also other stats than WORDS, LETTERS, SECONDS.
 # TODO: Track users across nick changes.
 # TODO: Shakedown stats records.
 
@@ -84,11 +83,20 @@ sub event_public {
 	my @stats = $stats->zstats();
 
 	$stats->{dbh}->do('BEGIN TRANSACTION');
+	# Count words
 	foreach my $word (split(/\W+/, $message)) {
 		next unless $word;
 		$stats->recword(time, $user, $channel, $word);
 		$stats[Stats::WORDS]++;
 		$stats[Stats::LETTERS] += length $word;
+	}
+	# Count smileys
+	my @smileys = (':-)', ':)', ';)', ';-)', ';p', '*g*', 'X)', '.)', '\')', '^_^', ':D', ':>', ':->', ':-D', ':-P', ':]', ':-]', '\']', '.]', ';]', ':P', '=)', '=]', ';D', ':o)', ':o]', ':^)', '(-:', ':oD', 'rotgl', 'rotfl', 'lol', 'heh', 'haha', 'lmao');
+	foreach my $smiley (@smileys) {
+		$a = -1;
+		while (($a = index($message, $smiley, $a + 1)) >= 0) {
+			$stats[Stats::SMILEYS]++;
+		}
 	}
 	$stats->recstat(time, $user, $channel, @stats);
 	$stats->{dbh}->do('COMMIT TRANSACTION');
@@ -135,6 +143,43 @@ sub event_public {
 	}
 }
 
+sub event_mode {
+	my ($server, $data, $nick, $addr) = @_;
+	my ($channel, $mode, @args) = split(/ /, $data);
+	return if ($nick eq $server->{nick});
+
+	my @stats = $stats->zstats();
+	$mode =~ s/[+-]//g;
+	$stats[Stats::MODES] += length $mode;
+	$stats->recstat(time, $nick, $channel, @stats);
+}
+
+sub event_kick {
+	my ($server, $data, $nick, $addr) = @_;
+	my ($channel, $nick_kicked) = split(/ /, $data);
+
+	my @stats = $stats->zstats();
+	$stats[Stats::KICKS]++;
+	$stats->recstat(time, $nick, $channel, @stats);
+}
+
+sub event_topic {
+	my ($server, $data, $nick, $addr) = @_;
+	my ($channel, $topic) = split(/ :/, $data, 2);	
+
+	my @stats = $stats->zstats();
+	$stats[Stats::TOPICS]++;
+	$stats->recstat(time, $nick, $channel, @stats);
+}
+
+sub event_action {
+	my ($server, $message, $nick, $addr, $channel) = @_;
+
+	my @stats = $stats->zstats();
+	$stats[Stats::ACTIONS]++;
+	$stats->recstat(time, $nick, $channel, @stats);
+}
+
 sub format_time {
         use integer;
 
@@ -169,6 +214,10 @@ sub format_time {
 }
 
 Irssi::signal_add_last('message public', 'event_public');
+Irssi::signal_add_last('event mode', 'event_mode');
+Irssi::signal_add_last('event kick', 'event_kick');
+Irssi::signal_add_last('event topic', 'event_topic');
+Irssi::signal_add_last('ctcp action', 'event_action');
 
 Irssi::settings_add_str('bot', 'bot_cmd_prefix', '`');
 
