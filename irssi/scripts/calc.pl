@@ -3,6 +3,10 @@ use warnings;
 
 use Irssi;
 use Safe;
+use BSD::Resource;
+use POSIX qw/:sys_wait_h raise/;
+use List::Util;
+use List::MoreUtils;
 
 use vars qw($VERSION %IRSSI);
 
@@ -20,16 +24,42 @@ sub on_public {
 
 	return unless $message =~ s/^${cp}calc\s+//;
 
-	my $compartment = new Safe();
-	# padany is crucial for Safe to work at all
-	$compartment->permit_only(qw(:base_core :base_math join padany));
+	pipe my $rh, my $wh;
+	my $pid = fork;
 
-	my $result = $compartment->reval($message);
-	if(not defined $result) {
-		$result = "N/A";
-	} else {
-		$result =~ s/[\x00\x0a\x0c\x0d]/./g;
+	if (!defined $pid) {
+		die "Can't fork";
 	}
+	elsif ($pid == 0) {
+		setrlimit(RLIMIT_CPU, 1, 1);
+		setrlimit(RLIMIT_RSS, 30_000_000, 30_000_000);
+		close $rh;
+
+		my $compartment = new Safe();
+		# padany is crucial for Safe to work at all
+		$compartment->permit_only(qw(:base_core :base_math :base_loop :base_mem padany));
+		$compartment->share_from('List::Util', [qw(first max maxstr min minstr reduce shuffle sum)]);
+		$compartment->share_from('List::MoreUtils', [qw(any all none notall true false firstidx first_index lastidx last_index insert_after insert_after_string apply after after_incl before before_incl indexes firstval first_value lastval last_value each_array each_arrayref pairwise natatime mesh zip uniq minmax)]);
+
+		my $result = $compartment->reval($message);
+		if(defined $result) {
+			print $wh $result;
+		} else {
+			print $wh "N/A ($@)";
+		}
+
+		close $wh;
+
+		raise 9; # exit 'gracefully' :-P -- so irssi will not mess-up with us
+	}
+
+	close $wh;
+
+	my $result = <$rh>;
+	$result //= "N/A";
+	$result =~ s/[\x00\x0a\x0c\x0d]/./g;
+
+	waitpid $pid, 0; # collect forked son
 
 	$server->send_message($channel, "$nick: $result", 0);
 }
