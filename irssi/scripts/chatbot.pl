@@ -59,6 +59,10 @@ sub megahal_response {
 	return ">> Can't connect to megahal, try latter or alert my master"
 		unless defined $megahal;
 
+	if ($data =~ /koureni.*nekoureni/i) {
+		return "Bez do haje.";
+	}
+
 	$megahal->printflush($data);
 	my $response = $megahal->getline;
 
