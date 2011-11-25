@@ -48,6 +48,8 @@ sub on_msg {
 			return;
 		}
 
+		@args = map { s/brmlab/Vltavska;Stross nam/; $_; } @args;
+
 		my %par = (
 			region => $region,
 			origin => $args[0],
