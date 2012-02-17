@@ -48,12 +48,15 @@ sub on_msg {
 			return;
 		}
 
+		my $later = 2;
+		$later = 5 if ($args[0] eq 'brmlab');
 		@args = map { s/brmlab/Vltavska;Stross nam/; $_; } @args;
 
 		my %par = (
 			region => $region,
 			origin => $args[0],
-			dest => $args[1]
+			dest => $args[1],
+			later => $later
 		);
 		$par{thru} = $args[2] if $args[2];
 		my $q = IDOS::RouteQuery->new(%par);
