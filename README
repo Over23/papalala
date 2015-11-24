@@ -2,11 +2,16 @@ This is the papalala irssi-based IRC bot platform. That means,
 a collection of irssi scripts providing various IRC services, and some
 supporting infrastructure.
 
-To run this thing, symlink everything in irssi/ to ~/.irssi/ and run
-irssi from the root directory of this tree. (or run: irssi --home $WHERE)
+To run this thing, symlink everything in irssi/ to ~/.irssi/ and run instance of
+irssi from the root directory of this tree. (or run: irssi --home $WHERE).
+Config of bot itself than is mostly managed by config of irssi instance (e.g. /nick will set bot's name).
+Check if you have at least autorun scripts started, most of them have some dependency to perl, and you will 
+see it, when you will do /script load.
+Nice way how to install cpan 
+[eg. yum install perl-CPAN.x86_64; cpan CPAN; cpan XXX where XXX is missing perl dependency]
 
 Best way to learn chatbot new words is using hailo command bundled with 
-Hailo perl module, just be sure to save brain in $IRSSIHOME/papalala.brn
+Hailo perl module [cpan Hailo], just be sure to save brain in $IRSSIHOME/papalala.brn
 
 irssi/         - the scripts themselves
 
